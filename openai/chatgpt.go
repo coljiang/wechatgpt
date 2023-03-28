@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	"wechatbot/config"
@@ -131,6 +130,7 @@ func Completions(msg string) (*string, error) {
 
 	log.Debugf("request openai json string : %v", string(requestData))
 	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(requestData))
+
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -138,7 +138,11 @@ func Completions(msg string) (*string, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", *apiKey))
-	client := &http.Client{}
+	client, err := NewHttpProxyClient("http://10.222.96.210:7890")
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
 	response, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -151,7 +155,7 @@ func Completions(msg string) (*string, error) {
 		}
 	}(response.Body)
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}

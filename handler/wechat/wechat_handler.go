@@ -2,7 +2,9 @@ package wechat
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"wechatbot/config"
 	"wechatbot/openai"
@@ -15,6 +17,7 @@ import (
 var _ MessageHandlerInterface = (*GroupMessageHandler)(nil)
 
 type GroupMessageHandler struct {
+	StartTime time.Time
 }
 
 func (gmh *GroupMessageHandler) handle(msg *openwechat.Message) error {
@@ -26,10 +29,20 @@ func (gmh *GroupMessageHandler) handle(msg *openwechat.Message) error {
 }
 
 func NewGroupMessageHandler() MessageHandlerInterface {
-	return &GroupMessageHandler{}
+	return &GroupMessageHandler{StartTime: time.Now()}
 }
 
 func (gmh *GroupMessageHandler) ReplyText(msg *openwechat.Message) error {
+	i, err := strconv.ParseInt(msg.MsgId, 10, 64)
+	if err != nil {
+		return err
+	}
+	start := time.Unix(i/10000000, 0)
+	if start.Sub(gmh.StartTime) < 0 {
+		log.Println("过期消息：", msg.Content)
+
+		return nil
+	}
 	sender, err := msg.Sender()
 	group := openwechat.Group{User: sender}
 	log.Printf("Received Group %v Text Msg : %v", group.NickName, msg.Content)
@@ -87,7 +100,23 @@ func (gmh *GroupMessageHandler) ReplyText(msg *openwechat.Message) error {
 	}
 
 	if reply != nil {
-		_, err = msg.ReplyText(*reply)
+		//_, err = msg.ReplyText(*reply)
+		self, err := msg.Bot.GetCurrentUser()
+		if err != nil {
+			log.Errorf("GetCurrentUser has err - %+v\n", err)
+			return err
+		}
+		if msg.IsSendBySelf() {
+			toUser := msg.ToUserName
+			uS := &openwechat.User{Self: self, UserName: toUser}
+			group = openwechat.Group{User: uS}
+		}
+		sendMsg, err := self.SendTextToGroup(&group, *reply)
+		if err != nil {
+			log.Errorf("SendTextToGroup has err - %+v\n", err)
+			return err
+		}
+		log.Infof("rep SendMsg : %+v", sendMsg)
 		if err != nil {
 			log.Println(err)
 		}

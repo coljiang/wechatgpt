@@ -27,6 +27,7 @@ func main() {
 	telegramEnv := config.GetTelegram()
 	if wechatEnv != nil && *wechatEnv == "true" {
 		bootstrap.StartWebChat()
+		log.Info("start weCaht")
 	} else if telegramEnv != nil {
 		bootstrap.StartTelegramBot()
 	}
