@@ -4,3 +4,5 @@ token.json
 wechatbot
 wechatbot.exe
 run.log
+.DS_Store
+vendor
